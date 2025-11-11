@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NICE Login</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#34B7F1">
+<link rel="icon" href="images(1).jpeg" type="image/jpeg">
+
+<style>
+body, html {
+  margin: 0; padding: 0; font-family: Arial, sans-serif; background: #ECE5DD; height: 100%; width: 100%;
+}
+.screen {
+  background: #fff; padding: 20px; width: 100%; height: 100%; 
+  text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;
+  box-sizing: border-box; overflow-y: auto;
+}
+h1 { margin-bottom: 15px; color: #34B7F1; font-size: 36px; }
+h2 { margin-bottom: 20px; font-size: 20px; }
+input, button, label {
+  display: block; width: 90%; max-width: 400px; margin: 10px auto; font-size: 16px; box-sizing: border-box;
+}
+input { padding:12px; border-radius:25px; border:1px solid #ccc; text-align:center; }
+button { padding:15px; border:none; border-radius:25px; font-weight:bold; color:#fff; cursor:pointer; background:#34B7F1; }
+label { display:block; background:#34B7F1; color:white; padding:12px 20px; border-radius:25px; cursor:pointer; font-weight:bold; }
+#profilePreview { width:100px; height:100px; border-radius:50%; border:3px solid #25D366; object-fit:cover; margin:15px auto; }
+#agreementDiv, #phoneDiv, #pinDiv, #nameDiv, #profileDiv { display:none; }
+.roller {
+  border: 4px solid #f3f3f3; border-top: 4px solid #34B7F1; border-radius: 50%; width: 25px; height: 25px; animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+</style>
+</head>
+<body>
+
+<!-- WELCOME SCREEN -->
+<div class="screen" id="welcomeDiv">
+  <h1>WELCOME TO NICE</h1>
+  <p>Created by KING SOLOMON</p>
+  <button id="agreeBtn">I Agree</button>
+</div>
+
+<!-- AGREEMENT & RULES SCREEN -->
+<div class="screen" id="agreementDiv">
+  <h2>Rules & Regulations</h2>
+  <p>Please read and accept our terms before continuing.</p>
+  <button id="continueBtn">Continue</button>
+</div>
+
+<!-- PHONE INPUT -->
+<div class="screen" id="phoneDiv">
+  <h2>Enter your phone number</h2>
+  <input type="text" id="phone" placeholder="11-digit phone starting with 0">
+  <button id="nextPhoneBtn">Next</button>
+</div>
+
+<!-- PIN INPUT -->
+<div class="screen" id="pinDiv">
+  <h2 id="pinTitle"></h2>
+  <input type="password" id="pinInput" placeholder="4-digit PIN" maxlength="4">
+  <button id="nextPinBtn">Next</button>
+  <button id="forgotPinBtn" style="background:#FF9800;">Forgot PIN</button>
+</div>
+
+<!-- NAME INPUT -->
+<div class="screen" id="nameDiv">
+  <h2>Enter your display name</h2>
+  <input type="text" id="username" placeholder="Your name" maxlength="20">
+  <button id="nextNameBtn">Next</button>
+</div>
+
+<!-- PROFILE PICTURE -->
+<div class="screen" id="profileDiv">
+  <h2>Set Your Profile Picture</h2>
+  <img id="profilePreview" src="https://via.placeholder.com/100">
+  <label for="profilePic">Choose Picture</label>
+  <input type="file" id="profilePic" accept="image/*">
+  <button id="finishBtn">Finish</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyB0UlT0KzzDfBchubvm5noKk7k4UlH52VM",
+    authDomain: "nice-chat-aaee5.firebaseapp.com",
+    projectId: "nice-chat-aaee5",
+    storageBucket: "nice-chat-aaee5.appspot.com",
+    messagingSenderId: "717368271513",
+    appId: "1:717368271513:web:47452e93114b7c502dce08"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+function show(id){
+  ['welcomeDiv','agreementDiv','phoneDiv','pinDiv','nameDiv','profileDiv']
+    .forEach(d=>document.getElementById(d).style.display=(d===id?'flex':'none'));
+}
+
+// AUTO-LOGIN & BAN CHECK
+const storedUser = JSON.parse(localStorage.getItem('userProfile'));
+if(storedUser){
+  const userRef = doc(db, "users", storedUser.phone);
+  getDoc(userRef).then(snap=>{
+    if(snap.exists() && snap.data().ban){
+      alert("🚫 Your account has been banned by the admin.");
+      localStorage.clear();
+      show('welcomeDiv');
+    } else {
+      window.location.href = 'groups.html';
+    }
+  }).catch(err=>{
+    console.error(err);
+    show('welcomeDiv');
+  });
+} else { show('welcomeDiv'); }
+
+let currentUser = null;
+
+document.getElementById('agreeBtn').onclick = ()=> show('agreementDiv');
+document.getElementById('continueBtn').onclick = ()=> show('phoneDiv');
+
+// PHONE
+document.getElementById('nextPhoneBtn').onclick = async ()=>{
+  const phone = document.getElementById('phone').value.trim();
+  if(!/^0\d{10}$/.test(phone)){ alert("Phone must be 11 digits starting with 0"); return; }
+
+  try{
+    const userRef = doc(db,"users",phone);
+    const userSnap = await getDoc(userRef);
+    if(userSnap.exists()){
+      currentUser = userSnap.data();
+      if(currentUser.ban){
+        alert("🚫 Your account has been banned.");
+        return;
+      }
+      document.getElementById('pinTitle').textContent="Enter your 4-digit PIN";
+    } else {
+      currentUser = { phone };
+      document.getElementById('pinTitle').textContent="Create your 4-digit PIN";
+    }
+    show('pinDiv');
+  }catch(err){ console.error(err); alert("Error connecting to database."); }
+}
+
+// PIN
+document.getElementById('nextPinBtn').onclick = ()=>{
+  const pin=document.getElementById('pinInput').value.trim();
+  if(!/^\d{4}$/.test(pin)){ alert("PIN must be 4 digits"); return; }
+
+  if(currentUser.username){
+    if(currentUser.ban){ alert("🚫 Your account has been banned."); return; }
+    if(pin!==currentUser.code){ alert("Incorrect PIN"); return; }
+    localStorage.setItem('userProfile',JSON.stringify(currentUser));
+    window.location.href='groups.html';
+  } else {
+    currentUser.code = pin;
+    show('nameDiv');
+  }
+}
+
+// FORGOT PIN
+document.getElementById('forgotPinBtn').onclick= async ()=>{
+  if(!currentUser.phone){ alert("Enter your phone first"); return; }
+  try{
+    await addDoc(collection(db,"forgotPinRequests"),{
+      phone: currentUser.phone,
+      requestedAt: serverTimestamp()
+    });
+    alert("Request submitted. Please try again later.");
+  }catch(err){ console.error(err); alert("Failed to submit request."); }
+}
+
+// NAME
+document.getElementById('nextNameBtn').onclick = ()=>{
+  const name=document.getElementById('username').value.trim();
+  if(!name){ alert("Enter your name"); return; }
+  currentUser.username = name;
+  currentUser.profilePic = "https://via.placeholder.com/100";
+  show('profileDiv');
+}
+
+// PROFILE PICTURE
+const profileInput = document.getElementById('profilePic');
+const preview = document.getElementById('profilePreview');
+profileInput.addEventListener('change', ()=>{
+  const file = profileInput.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = ()=>{ preview.src = reader.result; currentUser.profilePic = reader.result; }
+    reader.readAsDataURL(file);
+  }
+});
+
+// FINISH
+document.getElementById('finishBtn').onclick = async ()=>{
+  try{
+    const userRef = doc(db,"users",currentUser.phone);
+    await setDoc(userRef,{
+      username: currentUser.username,
+      phone: currentUser.phone,
+      code: currentUser.code,
+      createdAt: serverTimestamp(),
+      ban: false
+    });
+    localStorage.setItem('userProfile', JSON.stringify(currentUser));
+    alert("Signup complete!");
+    window.location.href='groups.html';
+  }catch(err){ console.error(err); alert("Failed to save user."); }
+}
+</script>
+
+</body>
+</html>

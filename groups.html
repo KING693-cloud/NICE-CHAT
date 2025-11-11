@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NICE - Groups</title>
+
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#34B7F1">
+<link rel="icon" href="images(1).jpeg" type="image/jpeg">
+
+<style>
+body, html { margin:0; padding:0; font-family:Arial,sans-serif; background:#ECE5DD; }
+.header { padding:20px; background:#34B7F1; color:white; text-align:center; font-size:22px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;}
+.user-info { display:flex; align-items:center; gap:15px; padding:20px; background:white; margin:10px; border-radius:10px; box-shadow:0 3px 6px rgba(0,0,0,0.1);}
+.user-info img { width:60px; height:60px; border-radius:50%; border:2px solid #25D366; object-fit:cover; }
+.user-info h3 { margin:0; font-size:18px; }
+
+.actions { display:flex; gap:10px; margin:10px; flex-wrap: wrap; }
+.actions div { flex:1; display:flex; gap:5px; }
+.actions input { flex:1; padding:10px; border-radius:25px; border:1px solid #ccc; font-size:16px; }
+.actions button { padding:10px 15px; border:none; border-radius:25px; cursor:pointer; color:white; font-weight:bold; background:#34B7F1; }
+
+#loader { display:none; justify-content:center; align-items:center; height:100px; margin:10px; }
+.roller { border:4px solid #f3f3f3; border-top:4px solid #34B7F1; border-radius:50%; width:25px; height:25px; animation:spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+#groupsContainer { margin:10px; }
+.group-card { padding:15px; background:white; border-radius:10px; margin-bottom:10px; box-shadow:0 3px 6px rgba(0,0,0,0.1); cursor:pointer; transition: transform 0.1s; position:relative;}
+.group-card:hover { transform: translateY(-2px); }
+.group-card h3 { margin:0; font-size:18px; }
+.group-card p { margin:5px 0 0 0; font-size:14px; color:#555; }
+.group-card button { margin-top:10px; padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+.group-card button.delete { background:#FF5252; color:white; }
+.group-card button.leave { background:#FF9800; color:white; }
+.group-card button.manager { background:#34B7F1; color:white; margin-left:5px; }
+
+/* Unread badge */
+.unread-badge {
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:green;
+  color:white;
+  font-size:12px;
+  font-weight:bold;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span>Your Groups</span>
+  <button onclick="window.location.href='index.html'">Logout</button>
+</div>
+
+<div id="userContainer"></div>
+
+<div class="actions">
+  <div>
+    <input type="text" id="createInput" placeholder="Enter new group name">
+    <button id="createBtn">Create</button>
+  </div>
+  <div>
+    <input type="text" id="joinInput" placeholder="Enter group code">
+    <button id="joinBtn">Join</button>
+  </div>
+</div>
+
+<div id="loader">
+  <div class="roller"></div>
+  <span style="margin-left:10px;">Loading groups...</span>
+</div>
+
+<div id="groupsContainer"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyB0UlT0KzzDfBchubvm5noKk7k4UlH52VM",
+    authDomain: "nice-chat-aaee5.firebaseapp.com",
+    projectId: "nice-chat-aaee5",
+    storageBucket: "nice-chat-aaee5.appspot.com",
+    messagingSenderId: "717368271513",
+    appId: "1:717368271513:web:47452e93114b7c502dce08"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let currentUser = JSON.parse(localStorage.getItem('userProfile'));
+if(!currentUser){ alert("User not found!"); window.location.href='index.html'; }
+
+const userContainer = document.getElementById('userContainer');
+const userDiv = document.createElement('div');
+userDiv.className = 'user-info';
+userDiv.innerHTML = `<img src="${currentUser.profilePic}" alt="Profile"><div><h3>${currentUser.username}</h3><p>Phone: ${currentUser.phone}</p></div>`;
+userContainer.appendChild(userDiv);
+
+async function checkBan() {
+    const usersSnap = await getDocs(collection(db,"users"));
+    const userDoc = usersSnap.docs.find(d => d.id===currentUser.phone);
+    if(userDoc?.data()?.ban){
+        alert("Your account has been banned.");
+        localStorage.removeItem('userProfile');
+        window.location.href='index.html';
+        return true;
+    }
+    return false;
+}
+
+document.getElementById('createBtn').onclick = async ()=>{
+    if(await checkBan()) return;
+    const groupName = document.getElementById('createInput').value.trim();
+    if(!groupName) return alert("Enter a group name");
+    try{
+        await addDoc(collection(db,"groups"),{
+            name: groupName,
+            code: Math.random().toString(36).substring(2,8).toUpperCase(),
+            adminPhone: currentUser.phone,
+            adminName: currentUser.username,
+            adminPic: currentUser.profilePic,
+            groupPic: currentUser.profilePic,
+            members: [currentUser.phone],
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('createInput').value='';
+        loadUserGroups();
+    }catch(err){
+        console.error(err);
+        alert("Failed to create group");
+    }
+}
+
+document.getElementById('joinBtn').onclick = async ()=>{
+    if(await checkBan()) return;
+    const code = document.getElementById('joinInput').value.trim();
+    if(!code) return alert("Enter group code");
+
+    const q = query(collection(db,"groups"), where("code","==",code));
+    const querySnapshot = await getDocs(q);
+    if(querySnapshot.empty){ alert("Invalid group code"); return; }
+
+    querySnapshot.forEach(async gDoc=>{
+        const gRef = doc(db,"groups", gDoc.id);
+        await updateDoc(gRef, { members: arrayUnion(currentUser.phone) });
+        document.getElementById('joinInput').value='';
+        loadUserGroups();
+    });
+}
+
+async function loadUserGroups(){
+    if(await checkBan()) return;
+    const container = document.getElementById('groupsContainer');
+    const loader = document.getElementById('loader');
+    container.innerHTML = "";
+    loader.style.display="flex";
+
+    const q = query(collection(db,"groups"), where("members","array-contains", currentUser.phone));
+    const snapshot = await getDocs(q);
+    loader.style.display="none";
+
+    if(snapshot.empty){ container.innerHTML="<p>No groups yet.</p>"; return; }
+
+    let groupsArr = [];
+    snapshot.forEach(docSnap=>{
+        const group = docSnap.data();
+        group.id = docSnap.id;
+        groupsArr.push(group);
+    });
+
+    for(let group of groupsArr){
+        const messagesRef = collection(db,"groups",group.code,"messages");
+        onSnapshot(messagesRef, snap=>{
+            let unread = 0;
+            snap.forEach(docSnap=>{
+                const msg = docSnap.data();
+                const lastRead = JSON.parse(localStorage.getItem('lastRead_'+group.code)) || 0;
+                if(msg.phone!==currentUser.phone && msg.timestamp?.seconds > lastRead) unread++;
+            });
+            group.unread = unread;
+            renderGroups(groupsArr);
+        });
+    }
+
+    renderGroups(groupsArr);
+}
+
+function renderGroups(groups){
+    const container = document.getElementById('groupsContainer');
+    container.innerHTML="";
+    groups.sort((a,b)=>b.unread - a.unread);
+    for(let group of groups){
+        const div = document.createElement('div');
+        div.className='group-card';
+        div.addEventListener('click',()=>{
+            localStorage.setItem('currentGroup', JSON.stringify(group));
+            localStorage.setItem('lastRead_'+group.code, Date.now()/1000);
+            group.unread = 0;
+            window.location.href='chat.html';
+        });
+
+        let buttonsHTML = '';
+        if(currentUser.phone === group.adminPhone){
+            buttonsHTML = `<button class="delete" onclick="event.stopPropagation(); deleteGroup('${group.id}')">Delete</button>
+                           <button class="manager" onclick="event.stopPropagation(); openGroupManager('${group.id}')">Manage</button>`;
+        } else {
+            buttonsHTML = `<button class="leave" onclick="event.stopPropagation(); leaveGroup('${group.id}')">Leave</button>`;
+        }
+
+        div.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img src="${group.groupPic}" style="width:60px;height:60px;border-radius:10px;border:2px solid #34B7F1;">
+                <div>
+                    <h3>${group.name}</h3>
+                    <p>Admin: ${group.adminName}</p>
+                    <p>Code: ${group.code}</p>
+                    ${buttonsHTML}
+                </div>
+            </div>
+        `;
+        if(group.unread>0){
+            const badge = document.createElement('div');
+            badge.className='unread-badge';
+            badge.textContent=group.unread;
+            div.appendChild(badge);
+        }
+        container.appendChild(div);
+    }
+}
+
+window.deleteGroup = async(groupId)=>{
+    if(!confirm("Delete this group?")) return;
+    try{ await deleteDoc(doc(db,"groups",groupId)); loadUserGroups(); }
+    catch(e){ console.error(e); alert("Failed to delete group"); }
+}
+window.leaveGroup = async(groupId)=>{
+    if(!confirm("Leave this group?")) return;
+    try{ await updateDoc(doc(db,"groups",groupId),{ members: arrayRemove(currentUser.phone) }); loadUserGroups(); }
+    catch(e){ console.error(e); alert("Failed to leave group"); }
+}
+window.openGroupManager = (groupId)=>{
+    localStorage.setItem('managerGroupId', groupId);
+    window.location.href='group-manager.html';
+}
+
+loadUserGroups();
+
+// --- PWA & Notification Service Worker Registration ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('firebase-messaging-sw.js')
+    .then(registration => {
+      console.log('Service Worker registered with scope:', registration.scope);
+    })
+    .catch(err => {
+      console.error('Service Worker registration failed:', err);
+    });
+}
+</script>
+
+</body>
+</html>

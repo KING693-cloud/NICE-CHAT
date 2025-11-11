@@ -1,0 +1,20 @@
+{
+  "name": "NICE Chat",
+  "short_name": "NICE",
+  "description": "Chat app created by KING SOLOMON",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ECE5DD",
+  "theme_color": "#34B7F1",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "images(1).jpeg", "sizes": "72x72", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "96x96", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "128x128", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "144x144", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "152x152", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "384x384", "type": "image/jpeg" },
+    { "src": "images(1).jpeg", "sizes": "512x512", "type": "image/jpeg" }
+  ]
+}

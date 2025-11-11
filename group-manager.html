@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Group Manager</title>
+<style>
+body, html { margin:0; padding:0; font-family:Arial,sans-serif; background:#ECE5DD; height:100%; }
+.header { padding:15px; background:#34B7F1; color:white; text-align:center; display:flex; justify-content:space-between; align-items:center; }
+.header h2 { margin:0; font-size:20px; }
+.member-card { background:white; margin:10px; padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+.member-card img { width:40px; height:40px; border-radius:50%; object-fit:cover; margin-right:10px; }
+.member-info { display:flex; flex-direction:column; }
+.member-card button { padding:5px 10px; border:none; border-radius:5px; background:#FF5252; color:white; cursor:pointer; font-weight:bold; }
+.member-card p.admin { color:#34B7F1; font-weight:bold; margin:0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h2 id="groupName">Group Manager</h2>
+  <button onclick="history.back()" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer;">Back</button>
+</div>
+
+<div id="membersContainer" style="padding-bottom:50px;"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayRemove } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+// --- Firebase Configuration ---
+const firebaseConfig = {
+  apiKey: "AIzaSyB0UlT0KzzDfBchubvm5noKk7k4UlH52VM",
+  authDomain: "nice-chat-aaee5.firebaseapp.com",
+  projectId: "nice-chat-aaee5",
+  storageBucket: "nice-chat-aaee5.appspot.com",
+  messagingSenderId: "717368271513",
+  appId: "1:717368271513:web:47452e93114b7c502dce08"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// --- Get current group & user ---
+const currentGroup = JSON.parse(localStorage.getItem('currentGroup'));
+const currentUser = JSON.parse(localStorage.getItem('userProfile'));
+if(!currentGroup || !currentUser){
+  alert("No group selected");
+  window.location.href = "groups.html";
+}
+
+document.getElementById('groupName').textContent = currentGroup.name;
+const membersContainer = document.getElementById('membersContainer');
+
+// --- Load group members ---
+async function loadMembers(){
+  membersContainer.innerHTML = "Loading members...";
+  const members = currentGroup.members || [];
+  membersContainer.innerHTML = "";
+  if(members.length === 0){
+    membersContainer.innerHTML = "<p style='text-align:center;'>No members yet.</p>";
+    return;
+  }
+
+  for(const phone of members){
+    let userData = {username: phone, profilePic:"https://via.placeholder.com/40"};
+    try{
+      const snap = await getDoc(doc(db,"users",phone));
+      if(snap.exists()) userData = snap.data();
+    } catch(e){ console.warn("User not found", e); }
+
+    const div = document.createElement('div');
+    div.className = "member-card";
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;">
+        <img src="${userData.profilePic}" alt="Profile">
+        <div class="member-info">
+          <p><b>${userData.username}</b></p>
+          <p>${phone}</p>
+        </div>
+      </div>
+      ${phone !== currentGroup.adminPhone ? `<button class="remove">Remove</button>` : `<p class="admin">Admin</p>`}
+    `;
+
+    const removeBtn = div.querySelector('.remove');
+    if(removeBtn){
+      removeBtn.onclick = async ()=>{
+        if(confirm(`Remove ${userData.username} from group?`)){
+          try{
+            const gRef = doc(db, "groups", currentGroup.code);
+            await updateDoc(gRef, { members: arrayRemove(phone) });
+
+            currentGroup.members = currentGroup.members.filter(m=>m!==phone);
+            localStorage.setItem('currentGroup', JSON.stringify(currentGroup));
+
+            loadMembers();
+          } catch(err){
+            console.error("Failed to remove member:", err);
+            alert("Failed to remove member. Try again.");
+          }
+        }
+      }
+    }
+
+    membersContainer.appendChild(div);
+  }
+}
+
+// --- Initial Load ---
+loadMembers();
+</script>
+
+</body>
+</html>
