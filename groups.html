@@ -58,7 +58,7 @@ body, html { margin:0; padding:0; font-family:Arial,sans-serif; background:#ECE5
 
 <div class="header">
   <span>Your Groups</span>
-  <button onclick="window.location.href='index.html'">Logout</button>
+  <button id="logoutBtn">Logout</button>
 </div>
 
 <div id="userContainer"></div>
@@ -85,6 +85,7 @@ body, html { margin:0; padding:0; font-family:Arial,sans-serif; background:#ECE5
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
+// --- Firebase Config ---
 const firebaseConfig = {
     apiKey: "AIzaSyB0UlT0KzzDfBchubvm5noKk7k4UlH52VM",
     authDomain: "nice-chat-aaee5.firebaseapp.com",
@@ -96,8 +97,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// --- CURRENT USER ---
 let currentUser = JSON.parse(localStorage.getItem('userProfile'));
-if(!currentUser){ alert("User not found!"); window.location.href='index.html'; }
+if(!currentUser){
+  alert("User not found!");
+  window.location.href='index.html';
+}
 
 const userContainer = document.getElementById('userContainer');
 const userDiv = document.createElement('div');
@@ -105,151 +110,169 @@ userDiv.className = 'user-info';
 userDiv.innerHTML = `<img src="${currentUser.profilePic}" alt="Profile"><div><h3>${currentUser.username}</h3><p>Phone: ${currentUser.phone}</p></div>`;
 userContainer.appendChild(userDiv);
 
+// Logout
+document.getElementById('logoutBtn').onclick = ()=>{
+  localStorage.removeItem('userProfile');
+  window.location.href='index.html';
+}
+
+// --- BAN CHECK ---
 async function checkBan() {
-    const usersSnap = await getDocs(collection(db,"users"));
-    const userDoc = usersSnap.docs.find(d => d.id===currentUser.phone);
+  try{
+    const userSnap = await getDocs(collection(db,"users"));
+    const userDoc = userSnap.docs.find(d => d.id===currentUser.phone);
     if(userDoc?.data()?.ban){
-        alert("Your account has been banned.");
-        localStorage.removeItem('userProfile');
-        window.location.href='index.html';
-        return true;
+      alert("🚫 Your account has been banned.");
+      localStorage.removeItem('userProfile');
+      window.location.href='index.html';
+      return true;
     }
     return false;
+  }catch(e){
+    console.error(e);
+    return true;
+  }
 }
 
+// --- CREATE GROUP ---
 document.getElementById('createBtn').onclick = async ()=>{
-    if(await checkBan()) return;
-    const groupName = document.getElementById('createInput').value.trim();
-    if(!groupName) return alert("Enter a group name");
-    try{
-        await addDoc(collection(db,"groups"),{
-            name: groupName,
-            code: Math.random().toString(36).substring(2,8).toUpperCase(),
-            adminPhone: currentUser.phone,
-            adminName: currentUser.username,
-            adminPic: currentUser.profilePic,
-            groupPic: currentUser.profilePic,
-            members: [currentUser.phone],
-            createdAt: serverTimestamp()
-        });
-        document.getElementById('createInput').value='';
-        loadUserGroups();
-    }catch(err){
-        console.error(err);
-        alert("Failed to create group");
-    }
+  if(await checkBan()) return;
+  const groupName = document.getElementById('createInput').value.trim();
+  if(!groupName) return alert("Enter a group name");
+  try{
+    await addDoc(collection(db,"groups"),{
+      name: groupName,
+      code: Math.random().toString(36).substring(2,8).toUpperCase(),
+      adminPhone: currentUser.phone,
+      adminName: currentUser.username,
+      adminPic: currentUser.profilePic,
+      groupPic: currentUser.profilePic,
+      members: [currentUser.phone],
+      createdAt: serverTimestamp()
+    });
+    document.getElementById('createInput').value='';
+    loadUserGroups();
+  }catch(err){
+    console.error(err);
+    alert("Failed to create group");
+  }
 }
 
+// --- JOIN GROUP ---
 document.getElementById('joinBtn').onclick = async ()=>{
-    if(await checkBan()) return;
-    const code = document.getElementById('joinInput').value.trim();
-    if(!code) return alert("Enter group code");
+  if(await checkBan()) return;
+  const code = document.getElementById('joinInput').value.trim();
+  if(!code) return alert("Enter group code");
 
-    const q = query(collection(db,"groups"), where("code","==",code));
-    const querySnapshot = await getDocs(q);
-    if(querySnapshot.empty){ alert("Invalid group code"); return; }
+  const q = query(collection(db,"groups"), where("code","==",code));
+  const querySnapshot = await getDocs(q);
+  if(querySnapshot.empty){ alert("Invalid group code"); return; }
 
-    querySnapshot.forEach(async gDoc=>{
-        const gRef = doc(db,"groups", gDoc.id);
-        await updateDoc(gRef, { members: arrayUnion(currentUser.phone) });
-        document.getElementById('joinInput').value='';
-        loadUserGroups();
-    });
+  querySnapshot.forEach(async gDoc=>{
+    const gRef = doc(db,"groups", gDoc.id);
+    await updateDoc(gRef, { members: arrayUnion(currentUser.phone) });
+    document.getElementById('joinInput').value='';
+    loadUserGroups();
+  });
 }
 
+// --- LOAD USER GROUPS ---
 async function loadUserGroups(){
-    if(await checkBan()) return;
-    const container = document.getElementById('groupsContainer');
-    const loader = document.getElementById('loader');
-    container.innerHTML = "";
-    loader.style.display="flex";
+  if(await checkBan()) return;
+  const container = document.getElementById('groupsContainer');
+  const loader = document.getElementById('loader');
+  container.innerHTML = "";
+  loader.style.display="flex";
 
-    const q = query(collection(db,"groups"), where("members","array-contains", currentUser.phone));
-    const snapshot = await getDocs(q);
-    loader.style.display="none";
+  const q = query(collection(db,"groups"), where("members","array-contains", currentUser.phone));
+  const snapshot = await getDocs(q);
+  loader.style.display="none";
 
-    if(snapshot.empty){ container.innerHTML="<p>No groups yet.</p>"; return; }
+  if(snapshot.empty){ container.innerHTML="<p>No groups yet.</p>"; return; }
 
-    let groupsArr = [];
-    snapshot.forEach(docSnap=>{
-        const group = docSnap.data();
-        group.id = docSnap.id;
-        groupsArr.push(group);
+  let groupsArr = [];
+  snapshot.forEach(docSnap=>{
+    const group = docSnap.data();
+    group.id = docSnap.id;
+    groupsArr.push(group);
+  });
+
+  // --- Real-time unread messages ---
+  for(let group of groupsArr){
+    const messagesRef = collection(db,"groups",group.code,"messages");
+    onSnapshot(messagesRef, snap=>{
+      let unread = 0;
+      snap.forEach(docSnap=>{
+        const msg = docSnap.data();
+        const lastRead = JSON.parse(localStorage.getItem('lastRead_'+group.code)) || 0;
+        if(msg.phone!==currentUser.phone && msg.timestamp?.seconds > lastRead) unread++;
+      });
+      group.unread = unread;
+      renderGroups(groupsArr);
+    });
+  }
+
+  renderGroups(groupsArr);
+}
+
+// --- RENDER GROUP CARDS ---
+function renderGroups(groups){
+  const container = document.getElementById('groupsContainer');
+  container.innerHTML="";
+  groups.sort((a,b)=>b.unread - a.unread);
+  for(let group of groups){
+    const div = document.createElement('div');
+    div.className='group-card';
+    div.addEventListener('click',()=>{
+      localStorage.setItem('currentGroup', JSON.stringify(group));
+      localStorage.setItem('lastRead_'+group.code, Date.now()/1000);
+      group.unread = 0;
+      window.location.href='chat.html';
     });
 
-    for(let group of groupsArr){
-        const messagesRef = collection(db,"groups",group.code,"messages");
-        onSnapshot(messagesRef, snap=>{
-            let unread = 0;
-            snap.forEach(docSnap=>{
-                const msg = docSnap.data();
-                const lastRead = JSON.parse(localStorage.getItem('lastRead_'+group.code)) || 0;
-                if(msg.phone!==currentUser.phone && msg.timestamp?.seconds > lastRead) unread++;
-            });
-            group.unread = unread;
-            renderGroups(groupsArr);
-        });
+    let buttonsHTML = '';
+    if(currentUser.phone === group.adminPhone){
+      buttonsHTML = `<button class="delete" onclick="event.stopPropagation(); deleteGroup('${group.id}')">Delete</button>
+                     <button class="manager" onclick="event.stopPropagation(); openGroupManager('${group.id}')">Manage</button>`;
+    } else {
+      buttonsHTML = `<button class="leave" onclick="event.stopPropagation(); leaveGroup('${group.id}')">Leave</button>`;
     }
 
-    renderGroups(groupsArr);
-}
-
-function renderGroups(groups){
-    const container = document.getElementById('groupsContainer');
-    container.innerHTML="";
-    groups.sort((a,b)=>b.unread - a.unread);
-    for(let group of groups){
-        const div = document.createElement('div');
-        div.className='group-card';
-        div.addEventListener('click',()=>{
-            localStorage.setItem('currentGroup', JSON.stringify(group));
-            localStorage.setItem('lastRead_'+group.code, Date.now()/1000);
-            group.unread = 0;
-            window.location.href='chat.html';
-        });
-
-        let buttonsHTML = '';
-        if(currentUser.phone === group.adminPhone){
-            buttonsHTML = `<button class="delete" onclick="event.stopPropagation(); deleteGroup('${group.id}')">Delete</button>
-                           <button class="manager" onclick="event.stopPropagation(); openGroupManager('${group.id}')">Manage</button>`;
-        } else {
-            buttonsHTML = `<button class="leave" onclick="event.stopPropagation(); leaveGroup('${group.id}')">Leave</button>`;
-        }
-
-        div.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;">
-                <img src="${group.groupPic}" style="width:60px;height:60px;border-radius:10px;border:2px solid #34B7F1;">
-                <div>
-                    <h3>${group.name}</h3>
-                    <p>Admin: ${group.adminName}</p>
-                    <p>Code: ${group.code}</p>
-                    ${buttonsHTML}
-                </div>
-            </div>
-        `;
-        if(group.unread>0){
-            const badge = document.createElement('div');
-            badge.className='unread-badge';
-            badge.textContent=group.unread;
-            div.appendChild(badge);
-        }
-        container.appendChild(div);
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${group.groupPic}" style="width:60px;height:60px;border-radius:10px;border:2px solid #34B7F1;">
+        <div>
+          <h3>${group.name}</h3>
+          <p>Admin: ${group.adminName}</p>
+          <p>Code: ${group.code}</p>
+          ${buttonsHTML}
+        </div>
+      </div>
+    `;
+    if(group.unread>0){
+      const badge = document.createElement('div');
+      badge.className='unread-badge';
+      badge.textContent=group.unread;
+      div.appendChild(badge);
     }
+    container.appendChild(div);
+  }
 }
 
+// --- GROUP ACTIONS ---
 window.deleteGroup = async(groupId)=>{
-    if(!confirm("Delete this group?")) return;
-    try{ await deleteDoc(doc(db,"groups",groupId)); loadUserGroups(); }
-    catch(e){ console.error(e); alert("Failed to delete group"); }
+  if(!confirm("Delete this group?")) return;
+  try{ await deleteDoc(doc(db,"groups",groupId)); loadUserGroups(); }
+  catch(e){ console.error(e); alert("Failed to delete group"); }
 }
 window.leaveGroup = async(groupId)=>{
-    if(!confirm("Leave this group?")) return;
-    try{ await updateDoc(doc(db,"groups",groupId),{ members: arrayRemove(currentUser.phone) }); loadUserGroups(); }
-    catch(e){ console.error(e); alert("Failed to leave group"); }
+  if(!confirm("Leave this group?")) return;
+  try{ await updateDoc(doc(db,"groups",groupId),{ members: arrayRemove(currentUser.phone) }); loadUserGroups(); }
+  catch(e){ console.error(e); alert("Failed to leave group"); }
 }
 window.openGroupManager = (groupId)=>{
-    localStorage.setItem('managerGroupId', groupId);
-    window.location.href='group-manager.html';
+  localStorage.setItem('managerGroupId', groupId);
+  window.location.href='group-manager.html';
 }
 
 loadUserGroups();
@@ -257,13 +280,51 @@ loadUserGroups();
 // --- PWA & Notification Service Worker Registration ---
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('firebase-messaging-sw.js')
-    .then(registration => {
-      console.log('Service Worker registered with scope:', registration.scope);
-    })
-    .catch(err => {
-      console.error('Service Worker registration failed:', err);
-    });
+    .then(registration => console.log('Service Worker registered:', registration.scope))
+    .catch(err => console.error('Service Worker registration failed:', err));
 }
+
+// --- FCM Notifications (Added) ---
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
+
+const messaging = getMessaging(app);
+
+async function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission !== "granted") {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("Notification permission denied");
+      return;
+    }
+  }
+
+  try {
+    const currentToken = await getToken(messaging, { vapidKey: "<YOUR_VAPID_KEY_HERE>" });
+    if (currentToken) {
+      console.log("FCM Token:", currentToken);
+      const userRef = doc(db, "users", currentUser.phone);
+      await updateDoc(userRef, { fcmToken: currentToken }).catch(()=>{});
+    } else {
+      console.warn("No registration token available.");
+    }
+  } catch (err) {
+    console.error("Error getting FCM token", err);
+  }
+}
+
+requestNotificationPermission();
+
+onMessage(messaging, payload => {
+  console.log("Foreground message:", payload);
+  const notificationTitle = payload.notification?.title || "New message";
+  const notificationOptions = {
+    body: payload.notification?.body || "You received a new message",
+    icon: './images(1).jpeg'
+  };
+  new Notification(notificationTitle, notificationOptions);
+  const audio = new Audio('https://actions.google.com/sounds/v1/alarms/medium_bell_ring.ogg');
+  audio.play().catch(()=>{});
+});
 </script>
 
 </body>
