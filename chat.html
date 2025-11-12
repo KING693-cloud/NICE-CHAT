@@ -3,84 +3,85 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NICE Chat</title>
+<title>NICE - Groups</title>
 
-<!-- PWA Manifest -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#34B7F1">
-<link rel="icon" href="images/images-1.jpeg" type="image/jpeg">
+<link rel="icon" href="images(1).jpeg" type="image/jpeg">
 
 <style>
-body, html {
-  margin:0; padding:0; font-family:Arial,sans-serif; height:100%; background:#ECE5DD; display:flex; flex-direction:column;
-}
-header {
-  background:#075E54; color:white; padding:10px; display:flex; align-items:center; gap:10px;
-}
-header button { background:none; border:none; color:white; font-size:22px; cursor:pointer; }
-header h3 { display:flex; align-items:center; gap:10px; margin:0;}
-header img { width:35px; height:35px; border-radius:50%; object-fit:cover; border:2px solid #25D366;}
+body, html { margin:0; padding:0; font-family:Arial,sans-serif; background:#ECE5DD; }
+.header { padding:20px; background:#34B7F1; color:white; display:flex; justify-content:space-between; align-items:center; font-size:22px; font-weight:bold;}
+.header button { background:white; color:#34B7F1; border:none; padding:8px 12px; border-radius:15px; cursor:pointer; font-weight:bold; }
 
-.chat-box {
-  flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; background:#ECE5DD;
+.user-info { display:flex; align-items:center; gap:15px; padding:20px; background:white; margin:10px; border-radius:10px; box-shadow:0 3px 6px rgba(0,0,0,0.1);}
+.user-info img { width:60px; height:60px; border-radius:50%; border:2px solid #25D366; object-fit:cover; }
+.user-info h3 { margin:0; font-size:18px; }
+
+.actions { display:flex; gap:10px; margin:10px; flex-wrap: wrap; }
+.actions input { flex:1; padding:10px; border-radius:25px; border:1px solid #ccc; font-size:16px; }
+.actions button { padding:10px 15px; border:none; border-radius:25px; cursor:pointer; color:white; font-weight:bold; background:#34B7F1; }
+
+#loader { display:none; justify-content:center; align-items:center; height:100px; margin:10px; }
+.roller { border:4px solid #f3f3f3; border-top:4px solid #34B7F1; border-radius:50%; width:25px; height:25px; animation:spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+#groupsContainer { margin:10px; }
+.group-card { padding:15px; background:white; border-radius:10px; margin-bottom:10px; box-shadow:0 3px 6px rgba(0,0,0,0.1); cursor:pointer; position:relative;}
+.group-card:hover { transform: translateY(-2px); }
+.group-card h3 { margin:0; font-size:18px; }
+.group-card p { margin:5px 0 0 0; font-size:14px; color:#555; }
+
+.group-card .btn-container { margin-top:10px; display:flex; gap:5px; flex-wrap:wrap; }
+.group-card .btn-container button { padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+.group-card .delete { background:#FF5252; color:white; }
+.group-card .manager { background:#34B7F1; color:white; }
+.group-card .leave { background:#FF9800; color:white; }
+
+.unread-badge {
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:green;
+  color:white;
+  font-size:12px;
+  font-weight:bold;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
-
-.message {
-  max-width:75%; padding:10px; margin:6px 0; border-radius:16px; word-wrap:break-word; display:flex; flex-direction:column;
-  position:relative; box-shadow:0 1px 2px rgba(0,0,0,0.2); white-space:pre-wrap; transition:all 0.2s;
-}
-.message.self { background:#DCF8C6; align-self:flex-end; border-bottom-right-radius:4px; border-bottom-left-radius:16px; }
-.message.other { background:#fff; align-self:flex-start; border-bottom-left-radius:4px; border-bottom-right-radius:16px; }
-
-.message img.profile { width:28px; height:28px; border-radius:50%; border:1px solid #ccc; margin-bottom:4px; align-self:flex-start; }
-.message .time { font-size:10px; color:#666; text-align:right; margin-top:4px; }
-.message .delete-btn { margin-top:6px; font-weight:bold; font-size:12px; cursor:pointer; padding:4px 8px; border-radius:6px; text-align:center; width:fit-content; }
-.message .delete-everyone { background:#d9534f; color:white; border:none;}
-.message .delete-me { background:#999; color:white; border:none;}
-
-footer {
-  background:#fff; display:flex; align-items:center; padding:10px; border-top:1px solid #ccc;
-}
-input[type="text"] { flex:1; padding:10px; border-radius:25px; border:1px solid #ccc; outline:none; }
-button { border:none; border-radius:50%; font-size:18px; cursor:pointer; margin-left:6px; width:45px; height:45px; display:flex; align-items:center; justify-content:center; color:white;}
-button.media { background:#25D366;}
-button.send { background:#34B7F1;}
-button.voice { background:#075E54;}
-button.voice.recording { background:red;}
-#mediaInput { display:none;}
-.message img.media, .message video { max-width:200px; border-radius:12px; margin-top:6px; }
-.message audio { width:200px; margin-top:6px; }
-button.voice span.timer { position:absolute; bottom:-20px; font-size:12px; color:#000;}
-
-/* Scrollbar */
-.chat-box::-webkit-scrollbar { width:6px;}
-.chat-box::-webkit-scrollbar-thumb { background:#888; border-radius:3px;}
-.chat-box::-webkit-scrollbar-track { background:#f1f1f1;}
 </style>
 </head>
 <body>
 
-<header>
-  <button id="backBtn">←</button>
-  <h3><img id="groupPic" src="" alt="Group"><span id="groupName">Chat Room</span></h3>
-</header>
+<div class="header">
+  <span>Your Groups</span>
+  <button id="logoutBtn">Logout</button>
+</div>
 
-<div class="chat-box" id="chatBox"></div>
+<div id="userContainer"></div>
 
-<footer>
-  <button class="media" onclick="mediaInput.click()">📎</button>
-  <input type="file" id="mediaInput" accept="image/*,video/*,audio/*">
-  <input type="text" id="messageInput" placeholder="Type message...">
-  <button class="voice" id="voiceBtn">🎤<span class="timer"></span></button>
-  <button class="send" id="sendBtn">➤</button>
-</footer>
+<div class="actions">
+  <input type="text" id="createInput" placeholder="Enter new group name">
+  <button id="createBtn">Create</button>
+  <input type="text" id="joinInput" placeholder="Enter group code">
+  <button id="joinBtn">Join</button>
+</div>
+
+<div id="loader">
+  <div class="roller"></div>
+  <span style="margin-left:10px;">Loading groups...</span>
+</div>
+
+<div id="groupsContainer"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-// Firebase setup
 const firebaseConfig = {
   apiKey: "AIzaSyB0UlT0KzzDfBchubvm5noKk7k4UlH52VM",
   authDomain: "nice-chat-aaee5.firebaseapp.com",
@@ -91,222 +92,147 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const messaging = getMessaging(app);
-
-// DOM Elements
-const chatBox = document.getElementById('chatBox');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const mediaInput = document.getElementById('mediaInput');
-const voiceBtn = document.getElementById('voiceBtn');
-const voiceTimer = voiceBtn.querySelector('.timer');
-const backBtn = document.getElementById('backBtn');
 
 let currentUser = JSON.parse(localStorage.getItem('userProfile'));
-let currentGroup = JSON.parse(localStorage.getItem('currentGroup'));
-if(!currentUser || !currentGroup){ alert("No group selected"); window.location.href='groups.html'; }
+if(!currentUser){ alert("User not found!"); window.location.href='index.html'; }
 
-document.getElementById('groupName').textContent = currentGroup.name;
-document.getElementById('groupPic').src = currentGroup.groupPic || 'https://via.placeholder.com/35';
+const userContainer = document.getElementById('userContainer');
+const userDiv = document.createElement('div');
+userDiv.className='user-info';
+userDiv.innerHTML=`<img src="${currentUser.profilePic}" alt="Profile"><div><h3>${currentUser.username}</h3><p>Phone: ${currentUser.phone}</p></div>`;
+userContainer.appendChild(userDiv);
 
-// Reference
-const messagesRef = collection(db, "groups", currentGroup.code, "messages");
-const renderedMessages = new Set();
-
-// --- Incoming sound only ---
-const incomingSound = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
-incomingSound.volume = 1.0;
-function playIncoming(){
-  incomingSound.currentTime = 0;
-  incomingSound.play().catch(()=>{});
+document.getElementById('logoutBtn').onclick = ()=>{
+  localStorage.removeItem('userProfile');
+  window.location.href='index.html';
 }
 
-// Format timestamp
-function formatTime(ts){
-  if(!ts) return '';
-  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds*1000);
-  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-}
-
-// Render message safely
-function renderMessage(msg){
-  if(!msg.id) return;
-  const self = msg.phone===currentUser.phone;
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'message ' + (self?'self':'other');
-  
-  const profilePic = msg.profilePic || 'https://via.placeholder.com/25';
-  msgDiv.innerHTML = `<img class="profile" src="${profilePic}" alt="${msg.username}">`;
-
-  let content = `<b>${msg.username.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</b><br>`;
-  if(msg.text) content += msg.text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '<br>';
-  if(msg.media){
-    if(msg.mediaType.startsWith('image/')) content += `<img class="media" src="${msg.media}">`;
-    else if(msg.mediaType.startsWith('video/')) content += `<video class="media" src="${msg.media}" muted autoplay loop playsinline></video>`;
-    else if(msg.mediaType.startsWith('audio/')) content += `<audio controls src="${msg.media}"></audio>`;
-  }
-
-  if(self){
-    if(msg.status === "delivered") content += `<div class="time">${formatTime(msg.timestamp)} <span style="color:gray;">✓</span></div>`;
-    else if(msg.status === "read") content += `<div class="time">${formatTime(msg.timestamp)} <span style="color:blue;">✓✓</span></div>`;
-    else content += `<div class="time">${formatTime(msg.timestamp)}</div>`;
-  } else {
-    content += `<div class="time">${formatTime(msg.timestamp)}</div>`;
-  }
-
-  msgDiv.innerHTML += content;
-
-  // Delete button
-  const delBtn = document.createElement('button');
-  delBtn.className = 'delete-btn ' + (self?'delete-everyone':'delete-me');
-  delBtn.textContent = self?'DELETE FOR EVERYONE':'DELETE FOR ME';
-  delBtn.onclick = async e=>{
-    e.stopPropagation();
-    if(self && msg.id && confirm("Delete this message for everyone?")){
-      await deleteDoc(doc(db,"groups",currentGroup.code,"messages",msg.id));
+async function checkBan() {
+  try{
+    const userSnap = await getDocs(collection(db,"users"));
+    const userDoc = userSnap.docs.find(d => d.id===currentUser.phone);
+    if(userDoc?.data()?.ban){
+      alert("🚫 Your account has been banned.");
+      localStorage.removeItem('userProfile');
+      window.location.href='index.html';
+      return true;
     }
-    msgDiv.remove();
-  };
-  msgDiv.appendChild(delBtn);
-
-  const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 50;
-  chatBox.appendChild(msgDiv);
-  if(isAtBottom) chatBox.scrollTop = chatBox.scrollHeight;
-
-  // Only play for incoming messages
-  if(!self) playIncoming();
+    return false;
+  }catch(e){ console.error(e); return true; }
 }
 
-// Load all messages
-async function loadMessages(){
-  chatBox.innerHTML = "";
-  const snapshot = await getDocs(messagesRef);
-  let msgs = [];
+document.getElementById('createBtn').onclick = async ()=>{
+  if(await checkBan()) return;
+  const groupName = document.getElementById('createInput').value.trim();
+  if(!groupName) return alert("Enter a group name");
+  await addDoc(collection(db,"groups"),{
+    name: groupName,
+    code: Math.random().toString(36).substring(2,8).toUpperCase(),
+    adminPhone: currentUser.phone,
+    adminName: currentUser.username,
+    adminPic: currentUser.profilePic,
+    groupPic: currentUser.profilePic,
+    members: [currentUser.phone],
+    createdAt: serverTimestamp()
+  });
+  document.getElementById('createInput').value='';
+  loadUserGroups();
+}
+
+document.getElementById('joinBtn').onclick = async ()=>{
+  if(await checkBan()) return;
+  const code = document.getElementById('joinInput').value.trim();
+  if(!code) return alert("Enter group code");
+  const q = query(collection(db,"groups"), where("code","==",code));
+  const snap = await getDocs(q);
+  if(snap.empty){ alert("Invalid code"); return; }
+  snap.forEach(async gDoc=>{
+    await updateDoc(doc(db,"groups",gDoc.id), { members: arrayUnion(currentUser.phone) });
+    document.getElementById('joinInput').value='';
+    loadUserGroups();
+  });
+}
+
+async function loadUserGroups(){
+  if(await checkBan()) return;
+  const container = document.getElementById('groupsContainer');
+  const loader = document.getElementById('loader');
+  container.innerHTML=''; loader.style.display='flex';
+  const q = query(collection(db,"groups"), where("members","array-contains",currentUser.phone));
+  const snapshot = await getDocs(q); loader.style.display='none';
+  if(snapshot.empty){ container.innerHTML="<p>No groups yet.</p>"; return; }
+
+  let groupsArr=[];
   snapshot.forEach(docSnap=>{
-    const msg = docSnap.data();
-    msg.id = docSnap.id;
-    msgs.push(msg);
+    const group = docSnap.data(); group.id = docSnap.id;
+    groupsArr.push(group);
   });
-  msgs.sort((a,b)=> a.timestamp?.seconds - b.timestamp?.seconds);
-  msgs.forEach(msg=>{
-    if(!renderedMessages.has(msg.id)){
-      renderedMessages.add(msg.id);
-      renderMessage(msg);
-    }
-  });
-  markMessagesAsRead();
-}
-loadMessages();
 
-// Mark incoming messages as read
-async function markMessagesAsRead(){
-  const snapshot = await getDocs(messagesRef);
-  snapshot.forEach(async docSnap=>{
-    const msg = docSnap.data();
-    if(msg.phone !== currentUser.phone && msg.status !== "read"){
-      await updateDoc(doc(db, "groups", currentGroup.code, "messages", docSnap.id), { status: "read" });
-    }
-  });
-}
-
-// Real-time listener
-onSnapshot(messagesRef, snapshot=>{
-  snapshot.docChanges().forEach(async change=>{
-    const msg = change.doc.data();
-    msg.id = change.doc.id;
-
-    if(change.type==="added" && !renderedMessages.has(msg.id)){
-      renderedMessages.add(msg.id);
-      renderMessage(msg);
-    }
-  });
-});
-
-// Send message
-async function sendMessage(data){
-  await addDoc(messagesRef, {...data, timestamp: serverTimestamp(), status:"delivered"});
-}
-
-// Send text
-sendBtn.onclick = ()=>{
-  const text = messageInput.value.trim();
-  if(!text) return;
-  sendMessage({ username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, text });
-  messageInput.value='';
-};
-
-// Send media
-mediaInput.onchange = e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=> sendMessage({ username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, media: reader.result, mediaType: file.type });
-  reader.readAsDataURL(file);
-};
-
-// Voice recording
-let mediaRecorder, chunks=[], timerInterval, seconds=0;
-let micStream;
-async function initMic(){
-  try{ micStream = await navigator.mediaDevices.getUserMedia({audio:true}); } 
-  catch(e){ alert("Microphone not available or blocked."); }
-}
-initMic();
-
-voiceBtn.onclick = ()=>{
-  if(!micStream){ alert("Mic not available"); return; }
-  if(voiceBtn.classList.contains('recording')){
-    mediaRecorder.stop();
-    voiceBtn.classList.remove('recording');
-    clearInterval(timerInterval);
-    voiceTimer.textContent='';
-  } else {
-    mediaRecorder = new MediaRecorder(micStream);
-    mediaRecorder.ondataavailable = e=>chunks.push(e.data);
-    mediaRecorder.onstop = ()=>{
-      const blob = new Blob(chunks,{type:'audio/webm'});
-      chunks=[];
-      const reader = new FileReader();
-      reader.onloadend = ()=> sendMessage({ username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, media: reader.result, mediaType:'audio/webm' });
-      reader.readAsDataURL(blob);
-    };
-    mediaRecorder.start();
-    voiceBtn.classList.add('recording');
-    seconds=0;
-    voiceTimer.textContent='0:00';
-    timerInterval = setInterval(()=>{
-      seconds++;
-      const min=Math.floor(seconds/60), sec=seconds%60;
-      voiceTimer.textContent=`${min}:${sec.toString().padStart(2,'0')}`;
-    },1000);
+  // Real-time unread messages
+  for(let group of groupsArr){
+    const msgRef = collection(db,"groups",group.code,"messages");
+    onSnapshot(msgRef,snap=>{
+      let unread=0;
+      snap.forEach(docSnap=>{
+        const msg=docSnap.data();
+        const lastRead=JSON.parse(localStorage.getItem('lastRead_'+group.code))||0;
+        if(msg.phone!==currentUser.phone && msg.timestamp?.seconds>lastRead) unread++;
+      });
+      group.unread=unread;
+      renderGroups(groupsArr);
+    });
   }
-};
-
-// Back button
-backBtn.onclick = ()=> window.location.href='groups.html';
-
-// FCM Notifications
-Notification.requestPermission().then(permission=>{
-  if(permission==="granted"){
-    getToken(messaging,{vapidKey:'BJo1T33ONwDqZ1K5ZWigKznRtjIydjxfYwFd5-wq4-VuCAxYKg95jQgy68vymEnlpOg6he1bKzzuVlME_KL9HkE'})
-      .then(token=>console.log('FCM Token:',token))
-      .catch(err=>console.error(err));
-  }
-});
-
-onMessage(messaging, payload=>{
-  if(Notification.permission==="granted"){
-    new Notification(payload.notification?.title||"New message", { body: payload.notification?.body||"You received a new message", icon:'./images/images-1.jpeg', silent:false });
-    playIncoming();
-  }
-});
-
-// PWA Service Worker
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('firebase-messaging-sw.js')
-    .then(reg=>console.log('SW registered:',reg.scope))
-    .catch(err=>console.error('SW registration failed:', err));
+  renderGroups(groupsArr);
 }
+
+function renderGroups(groups){
+  const container=document.getElementById('groupsContainer');
+  container.innerHTML='';
+  groups.sort((a,b)=>b.unread - a.unread);
+  for(let group of groups){
+    const div=document.createElement('div');
+    div.className='group-card';
+    div.addEventListener('click',()=>{
+      localStorage.setItem('currentGroup',JSON.stringify(group));
+      localStorage.setItem('lastRead_'+group.code,Date.now()/1000);
+      group.unread=0;
+      window.location.href='chat.html';
+    });
+
+    let btnsHTML = '';
+    if(currentUser.phone===group.adminPhone){
+      btnsHTML = `<button class="delete" onclick="event.stopPropagation(); deleteGroup('${group.id}')">Delete</button>
+                  <button class="manager" onclick="event.stopPropagation(); openGroupManager('${group.id}')">Manage</button>`;
+    } else {
+      btnsHTML = `<button class="leave" onclick="event.stopPropagation(); leaveGroup('${group.id}')">Leave</button>`;
+    }
+
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${group.groupPic}" style="width:60px;height:60px;border-radius:10px;border:2px solid #34B7F1;">
+        <div>
+          <h3>${group.name}</h3>
+          <p>Admin: ${group.adminName}</p>
+          <p>Code: ${group.code}</p>
+          <div class="btn-container">${btnsHTML}</div>
+        </div>
+      </div>
+    `;
+    if(group.unread>0){
+      const badge=document.createElement('div');
+      badge.className='unread-badge';
+      badge.textContent=group.unread;
+      div.appendChild(badge);
+    }
+    container.appendChild(div);
+  }
+}
+
+window.deleteGroup = async(id)=>{ if(confirm("Delete this group?")){ await deleteDoc(doc(db,"groups",id)); loadUserGroups(); }}
+window.leaveGroup = async(id)=>{ if(confirm("Leave this group?")){ await updateDoc(doc(db,"groups",id),{ members: arrayRemove(currentUser.phone) }); loadUserGroups(); }}
+window.openGroupManager = (id)=>{ localStorage.setItem('managerGroupId',id); window.location.href='group-manager.html'; }
+
+loadUserGroups();
 </script>
 
 </body>
