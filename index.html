@@ -103,26 +103,54 @@ function show(id){
     .forEach(d=>document.getElementById(d).style.display=(d===id?'flex':'none'));
 }
 
-// AUTO-LOGIN & BAN CHECK
+let currentUser = null;
+
+// --- AUTO-LOGIN & BAN CHECK ---
+async function requestNotificationPermission() {
+  if("Notification" in window && Notification.permission!=="granted") {
+    await Notification.requestPermission();
+  }
+}
+
 const storedUser = JSON.parse(localStorage.getItem('userProfile'));
 if(storedUser){
   const userRef = doc(db, "users", storedUser.phone);
-  getDoc(userRef).then(snap=>{
-    if(snap.exists() && snap.data().ban){
-      alert("🚫 Your account has been banned by the admin.");
+  getDoc(userRef).then(async snap=>{
+    if(!snap.exists()){
       localStorage.clear();
       show('welcomeDiv');
-    } else {
-      window.location.href = 'groups.html';
+      return;
     }
+    const userData = snap.data();
+
+    if(userData.ban){
+      alert("🚫 Your account has been banned.");
+      localStorage.clear();
+      show('welcomeDiv');
+      return;
+    }
+
+    currentUser = {
+      phone: userData.phone,
+      username: userData.username || "User",
+      profilePic: userData.profilePic || "https://via.placeholder.com/100",
+      code: userData.code || "",
+      createdAt: userData.createdAt || null,
+      ban: userData.ban || false
+    };
+
+    localStorage.setItem('userProfile', JSON.stringify(currentUser));
+
+    await requestNotificationPermission();
+
+    window.location.href = 'groups.html';
   }).catch(err=>{
     console.error(err);
     show('welcomeDiv');
   });
 } else { show('welcomeDiv'); }
 
-let currentUser = null;
-
+// BUTTON EVENTS
 document.getElementById('agreeBtn').onclick = ()=> show('agreementDiv');
 document.getElementById('continueBtn').onclick = ()=> show('phoneDiv');
 
@@ -206,6 +234,7 @@ document.getElementById('finishBtn').onclick = async ()=>{
       username: currentUser.username,
       phone: currentUser.phone,
       code: currentUser.code,
+      profilePic: currentUser.profilePic,
       createdAt: serverTimestamp(),
       ban: false
     });
