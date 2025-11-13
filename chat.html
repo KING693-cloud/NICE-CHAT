@@ -14,15 +14,14 @@ header button {background:none;border:none;color:white;font-size:22px;cursor:poi
 header h3 {display:flex;align-items:center;gap:10px;}
 header img {width:35px;height:35px;border-radius:50%;object-fit:cover;border:2px solid #25D366;}
 .chat-box {flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;}
-.message {max-width:75%;padding:10px;margin:8px 0;border-radius:10px;word-wrap:break-word;display:flex;flex-direction:column;white-space:pre-wrap;position:relative;}
+.message {max-width:75%;padding:10px;margin:8px 0;border-radius:10px;word-wrap:break-word;display:flex;flex-direction:column;white-space:pre-wrap;}
 .message.self {background:#DCF8C6;align-self:flex-end;}
 .message.other {background:#fff;align-self:flex-start;}
 .message img.profile {width:25px;height:25px;border-radius:50%;border:1px solid #ccc;margin-bottom:4px;}
 .message .delete-btn {margin-top:6px;font-weight:bold;font-size:13px;cursor:pointer;padding:4px 8px;border-radius:6px;text-align:center;width:fit-content;}
 .message .delete-everyone {background:#d9534f;color:white;border:none;}
 .message .delete-me {background:#999;color:white;border:none;}
-.message .read-status {font-size:11px;color:gray;text-align:right;margin-top:3px;}
-.message .read-status.read {color:#34B7F1;}
+.read-status {font-size:12px;color:#666;margin-top:4px;}
 footer {background:#fff;display:flex;align-items:center;padding:10px;border-top:1px solid #ccc;}
 input[type="text"] {flex:1;padding:10px;border-radius:25px;border:1px solid #ccc;outline:none;}
 button {border:none;border-radius:50%;font-size:18px;cursor:pointer;margin-left:6px;width:45px;height:45px;display:flex;align-items:center;justify-content:center;color:white;}
@@ -55,12 +54,10 @@ button.voice span.timer {position:absolute;bottom:-20px;font-size:12px;color:#00
 </footer>
 
 <script type="module">
-// ===== Firebase imports =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
 
-// ===== Firebase App =====
 const firebaseConfig = {
   apiKey: "AIzaSyB0UlT0KzzDfBchubvm5noKk7k4UlH52VM",
   authDomain: "nice-chat-aaee5.firebaseapp.com",
@@ -73,7 +70,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
 
-// ===== DOM Elements =====
 const chatBox = document.getElementById('chatBox');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -82,7 +78,6 @@ const voiceBtn = document.getElementById('voiceBtn');
 const voiceTimer = voiceBtn.querySelector('.timer');
 const backBtn = document.getElementById('backBtn');
 
-// ===== Sounds =====
 const outgoingSound = new Audio('OF.mp3');
 const incomingSound = new Audio('OF.mp3');
 outgoingSound.preload = 'auto';
@@ -95,43 +90,36 @@ document.body.addEventListener('touchstart', ()=>{ userInteracted = true; }, {on
 function playOutgoing(){ if(userInteracted) outgoingSound.play().catch(()=>{}); }
 function playIncoming(){ if(userInteracted) incomingSound.play().catch(()=>{}); }
 
-// ===== Current user/group =====
 let currentUser = JSON.parse(localStorage.getItem('userProfile'));
 let currentGroup = JSON.parse(localStorage.getItem('currentGroup'));
 if(!currentGroup || !currentUser){ alert("No group selected or user not found"); window.location.href='groups.html'; }
 document.getElementById('groupName').textContent = currentGroup.name;
 document.getElementById('groupPic').src = currentGroup.groupPic || 'https://via.placeholder.com/35';
 
-// ===== Messages =====
 const messagesRef = collection(db, "groups", currentGroup.code, "messages");
 const renderedMessages = new Set();
+
+// ===== Mark messages as read when visible =====
+function markMessageAsRead(msgId) {
+  const msgDoc = doc(db, "groups", currentGroup.code, "messages", msgId);
+  updateDoc(msgDoc, { read: true }).catch(()=>{});
+}
 
 function renderMessage(msg){
   if(!msg.id) return;
   const msgDiv = document.createElement('div');
   msgDiv.className = 'message ' + (msg.phone===currentUser.phone ? 'self':'other');
+  msgDiv.dataset.id = msg.id;
   msgDiv.innerHTML = `<img class="profile" src="${msg.profilePic||'https://via.placeholder.com/25'}">`;
 
   let content = `<b>${msg.username}</b><br>`;
   if(msg.text) content += msg.text+'<br>';
   if(msg.media){
-    if(msg.mediaType.startsWith('image/')) content += `<img class="media" src="${msg.media}">`;
-    else if(msg.mediaType.startsWith('video/')) content += `<video class="media" src="${msg.media}" muted autoplay loop playsinline></video>`;
-    else if(msg.mediaType.startsWith('audio/')) content += `<audio controls src="${msg.media}"></audio>`;
+    if(msg.mediaType?.startsWith('image/')) content += `<img class="media" src="${msg.media}">`;
+    else if(msg.mediaType?.startsWith('video/')) content += `<video class="media" src="${msg.media}" muted autoplay loop playsinline></video>`;
+    else if(msg.mediaType?.startsWith('audio/')) content += `<audio controls src="${msg.media}"></audio>`;
   }
   msgDiv.innerHTML += content;
-
-  // ===== Read/Unread Status =====
-  if (msg.phone === currentUser.phone) {
-    const status = document.createElement('div');
-    status.className = 'read-status ' + (msg.read ? 'read' : '');
-    status.textContent = msg.read ? '✓✓ Read' : '✓ Sent';
-    msgDiv.appendChild(status);
-  } else if (!msg.read) {
-    // Mark as read when rendered for receiver
-    const msgRef = doc(db, "groups", currentGroup.code, "messages", msg.id);
-    updateDoc(msgRef, { read: true }).catch(()=>{});
-  }
 
   const delBtn = document.createElement('button');
   delBtn.className = 'delete-btn '+(msg.phone===currentUser.phone?'delete-everyone':'delete-me');
@@ -146,44 +134,47 @@ function renderMessage(msg){
   };
   msgDiv.appendChild(delBtn);
 
+  // Add sent/read status
+  const status = document.createElement('div');
+  status.className = 'read-status';
+  status.textContent = msg.read ? 'Read' : 'Sent';
+  msgDiv.appendChild(status);
+
   chatBox.appendChild(msgDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
-}
 
-// ===== Load messages =====
-async function loadMessages(){
-  chatBox.innerHTML="";
-  const snapshot = await getDocs(messagesRef);
-  let msgs = [];
-  snapshot.forEach(docSnap=>{
-    const msg = docSnap.data();
-    msg.id = docSnap.id;
-    msgs.push(msg);
-  });
-  msgs.sort((a,b)=> a.timestamp?.seconds - b.timestamp?.seconds);
-  msgs.forEach(msg=>{
-    if(!renderedMessages.has(msg.id)){
-      renderedMessages.add(msg.id);
-      renderMessage(msg);
-    }
-  });
-  chatBox.scrollTop = chatBox.scrollHeight;
+  // Observe for read marking
+  if (msg.phone !== currentUser.phone) {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !msg.read) {
+          markMessageAsRead(msg.id);
+          observer.unobserve(entry.target);
+        }
+      });
+    });
+    observer.observe(msgDiv);
+  }
 }
-loadMessages();
 
 // ===== Real-time messages =====
 onSnapshot(messagesRef, snapshot=>{
   snapshot.docChanges().forEach(change=>{
-    if(change.type==="added" || change.type==="modified"){
-      const msg = change.doc.data();
-      msg.id = change.doc.id;
-      if(!renderedMessages.has(msg.id) || change.type==="modified"){
+    const msg = change.doc.data();
+    msg.id = change.doc.id;
+
+    if (change.type === "added") {
+      if (!renderedMessages.has(msg.id)) {
         renderedMessages.add(msg.id);
         renderMessage(msg);
-        if(change.type==="added"){
-          if(msg.phone===currentUser.phone) playOutgoing();
-          else playIncoming();
-        }
+        if (msg.phone === currentUser.phone) playOutgoing();
+        else playIncoming();
+      }
+    } else if (change.type === "modified") {
+      const msgEl = [...chatBox.children].find(m => m.dataset.id === msg.id);
+      if (msgEl) {
+        const status = msgEl.querySelector('.read-status');
+        if (status) status.textContent = msg.read ? 'Read' : 'Sent';
       }
     }
   });
@@ -193,7 +184,7 @@ onSnapshot(messagesRef, snapshot=>{
 sendBtn.onclick = async ()=>{
   const text = messageInput.value.trim();
   if(!text) return;
-  const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, text, read: false, timestamp: serverTimestamp() };
+  const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, text, timestamp: serverTimestamp(), read: false };
   messageInput.value='';
   await addDoc(messagesRef,msgData);
 };
@@ -204,7 +195,7 @@ mediaInput.onchange = async e=>{
   if(!file) return;
   const reader = new FileReader();
   reader.onload = async ()=>{
-    const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, media: reader.result, mediaType: file.type, read: false, timestamp: serverTimestamp() };
+    const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, media: reader.result, mediaType: file.type, timestamp: serverTimestamp(), read: false };
     await addDoc(messagesRef,msgData);
   };
   reader.readAsDataURL(file);
@@ -240,7 +231,7 @@ voiceBtn.onclick = ()=>{
       chunks=[];
       const reader = new FileReader();
       reader.onloadend = async ()=>{
-        const msgData={ username:currentUser.username, phone:currentUser.phone, profilePic:currentUser.profilePic, media:reader.result, mediaType:'audio/webm', read:false, timestamp:serverTimestamp() };
+        const msgData={ username:currentUser.username, phone:currentUser.phone, profilePic:currentUser.profilePic, media:reader.result, mediaType:'audio/webm', timestamp:serverTimestamp(), read: false };
         await addDoc(messagesRef,msgData);
       };
       reader.readAsDataURL(blob);
@@ -257,7 +248,6 @@ voiceBtn.onclick = ()=>{
   }
 };
 
-// ===== Back button =====
 backBtn.onclick = ()=>window.location.href='groups.html';
 
 // ===== FCM Notifications =====
@@ -275,7 +265,6 @@ onMessage(messaging, payload=>{
   }
 });
 
-// ===== PWA Service Worker =====
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('firebase-messaging-sw.js')
     .then(reg=>console.log('SW registered:',reg.scope))
