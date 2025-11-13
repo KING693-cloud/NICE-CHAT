@@ -54,7 +54,7 @@ button.voice span.timer {position:absolute;bottom:-20px;font-size:12px;color:#00
 </footer>
 
 <script type="module">
-// ===== Your original Firebase imports =====
+// ===== Firebase imports =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
@@ -81,11 +81,11 @@ const voiceBtn = document.getElementById('voiceBtn');
 const voiceTimer = voiceBtn.querySelector('.timer');
 const backBtn = document.getElementById('backBtn');
 
-// ===== Sounds =====
+// ===== Sounds (short for both) =====
 const outgoingSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
-const incomingSound = new Audio('https://actions.google.com/sounds/v1/cartoon/slide_whistle.ogg');
-function playOutgoing(){ outgoingSound.currentTime=0; outgoingSound.play().catch(()=>{});}
-function playIncoming(){ incomingSound.currentTime=0; incomingSound.play().catch(()=>{});}
+const incomingSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'); // same short sound
+function playOutgoing(){ outgoingSound.currentTime=0; outgoingSound.play().catch(()=>{}); }
+function playIncoming(){ incomingSound.currentTime=0; incomingSound.play().catch(()=>{}); }
 
 // ===== Current user/group =====
 let currentUser = JSON.parse(localStorage.getItem('userProfile'));
