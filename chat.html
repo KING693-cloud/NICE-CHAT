@@ -14,13 +14,15 @@ header button {background:none;border:none;color:white;font-size:22px;cursor:poi
 header h3 {display:flex;align-items:center;gap:10px;}
 header img {width:35px;height:35px;border-radius:50%;object-fit:cover;border:2px solid #25D366;}
 .chat-box {flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;}
-.message {max-width:75%;padding:10px;margin:8px 0;border-radius:10px;word-wrap:break-word;display:flex;flex-direction:column;white-space:pre-wrap;}
+.message {max-width:75%;padding:10px;margin:8px 0;border-radius:10px;word-wrap:break-word;display:flex;flex-direction:column;white-space:pre-wrap;position:relative;}
 .message.self {background:#DCF8C6;align-self:flex-end;}
 .message.other {background:#fff;align-self:flex-start;}
 .message img.profile {width:25px;height:25px;border-radius:50%;border:1px solid #ccc;margin-bottom:4px;}
 .message .delete-btn {margin-top:6px;font-weight:bold;font-size:13px;cursor:pointer;padding:4px 8px;border-radius:6px;text-align:center;width:fit-content;}
 .message .delete-everyone {background:#d9534f;color:white;border:none;}
 .message .delete-me {background:#999;color:white;border:none;}
+.message .read-status {font-size:11px;color:gray;text-align:right;margin-top:3px;}
+.message .read-status.read {color:#34B7F1;}
 footer {background:#fff;display:flex;align-items:center;padding:10px;border-top:1px solid #ccc;}
 input[type="text"] {flex:1;padding:10px;border-radius:25px;border:1px solid #ccc;outline:none;}
 button {border:none;border-radius:50%;font-size:18px;cursor:pointer;margin-left:6px;width:45px;height:45px;display:flex;align-items:center;justify-content:center;color:white;}
@@ -55,7 +57,7 @@ button.voice span.timer {position:absolute;bottom:-20px;font-size:12px;color:#00
 <script type="module">
 // ===== Firebase imports =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
 
 // ===== Firebase App =====
@@ -87,7 +89,6 @@ outgoingSound.preload = 'auto';
 incomingSound.preload = 'auto';
 
 let userInteracted = false;
-// enable sounds only after first tap/click
 document.body.addEventListener('click', ()=>{ userInteracted = true; }, {once:true});
 document.body.addEventListener('touchstart', ()=>{ userInteracted = true; }, {once:true});
 
@@ -119,6 +120,18 @@ function renderMessage(msg){
     else if(msg.mediaType.startsWith('audio/')) content += `<audio controls src="${msg.media}"></audio>`;
   }
   msgDiv.innerHTML += content;
+
+  // ===== Read/Unread Status =====
+  if (msg.phone === currentUser.phone) {
+    const status = document.createElement('div');
+    status.className = 'read-status ' + (msg.read ? 'read' : '');
+    status.textContent = msg.read ? '✓✓ Read' : '✓ Sent';
+    msgDiv.appendChild(status);
+  } else if (!msg.read) {
+    // Mark as read when rendered for receiver
+    const msgRef = doc(db, "groups", currentGroup.code, "messages", msg.id);
+    updateDoc(msgRef, { read: true }).catch(()=>{});
+  }
 
   const delBtn = document.createElement('button');
   delBtn.className = 'delete-btn '+(msg.phone===currentUser.phone?'delete-everyone':'delete-me');
@@ -161,14 +174,16 @@ loadMessages();
 // ===== Real-time messages =====
 onSnapshot(messagesRef, snapshot=>{
   snapshot.docChanges().forEach(change=>{
-    if(change.type==="added"){
+    if(change.type==="added" || change.type==="modified"){
       const msg = change.doc.data();
       msg.id = change.doc.id;
-      if(!renderedMessages.has(msg.id)){
+      if(!renderedMessages.has(msg.id) || change.type==="modified"){
         renderedMessages.add(msg.id);
         renderMessage(msg);
-        if(msg.phone===currentUser.phone) playOutgoing();
-        else playIncoming();
+        if(change.type==="added"){
+          if(msg.phone===currentUser.phone) playOutgoing();
+          else playIncoming();
+        }
       }
     }
   });
@@ -178,7 +193,7 @@ onSnapshot(messagesRef, snapshot=>{
 sendBtn.onclick = async ()=>{
   const text = messageInput.value.trim();
   if(!text) return;
-  const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, text, timestamp: serverTimestamp() };
+  const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, text, read: false, timestamp: serverTimestamp() };
   messageInput.value='';
   await addDoc(messagesRef,msgData);
 };
@@ -189,7 +204,7 @@ mediaInput.onchange = async e=>{
   if(!file) return;
   const reader = new FileReader();
   reader.onload = async ()=>{
-    const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, media: reader.result, mediaType: file.type, timestamp: serverTimestamp() };
+    const msgData = { username: currentUser.username, phone: currentUser.phone, profilePic: currentUser.profilePic, media: reader.result, mediaType: file.type, read: false, timestamp: serverTimestamp() };
     await addDoc(messagesRef,msgData);
   };
   reader.readAsDataURL(file);
@@ -225,7 +240,7 @@ voiceBtn.onclick = ()=>{
       chunks=[];
       const reader = new FileReader();
       reader.onloadend = async ()=>{
-        const msgData={ username:currentUser.username, phone:currentUser.phone, profilePic:currentUser.profilePic, media:reader.result, mediaType:'audio/webm', timestamp:serverTimestamp() };
+        const msgData={ username:currentUser.username, phone:currentUser.phone, profilePic:currentUser.profilePic, media:reader.result, mediaType:'audio/webm', read:false, timestamp:serverTimestamp() };
         await addDoc(messagesRef,msgData);
       };
       reader.readAsDataURL(blob);
