@@ -8,7 +8,6 @@
 <meta name="theme-color" content="#34B7F1">
 <link rel="icon" href="images/images-1.jpeg" type="image/jpeg">
 <style>
-/* ===== Your original styles ===== */
 body, html {margin:0;padding:0;height:100%;background:#ECE5DD;font-family:Arial,sans-serif;display:flex;flex-direction:column;}
 header {background:#075E54;color:white;padding:10px;display:flex;align-items:center;gap:10px;}
 header button {background:none;border:none;color:white;font-size:22px;cursor:pointer;}
@@ -81,11 +80,19 @@ const voiceBtn = document.getElementById('voiceBtn');
 const voiceTimer = voiceBtn.querySelector('.timer');
 const backBtn = document.getElementById('backBtn');
 
-// ===== Sounds (short for both) =====
-const outgoingSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
-const incomingSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'); // same short sound
-function playOutgoing(){ outgoingSound.currentTime=0; outgoingSound.play().catch(()=>{}); }
-function playIncoming(){ incomingSound.currentTime=0; incomingSound.play().catch(()=>{}); }
+// ===== Sounds =====
+const outgoingSound = new Audio('OF.mp3');
+const incomingSound = new Audio('OF.mp3');
+outgoingSound.preload = 'auto';
+incomingSound.preload = 'auto';
+
+let userInteracted = false;
+// enable sounds only after first tap/click
+document.body.addEventListener('click', ()=>{ userInteracted = true; }, {once:true});
+document.body.addEventListener('touchstart', ()=>{ userInteracted = true; }, {once:true});
+
+function playOutgoing(){ if(userInteracted) outgoingSound.play().catch(()=>{}); }
+function playIncoming(){ if(userInteracted) incomingSound.play().catch(()=>{}); }
 
 // ===== Current user/group =====
 let currentUser = JSON.parse(localStorage.getItem('userProfile'));
@@ -98,7 +105,6 @@ document.getElementById('groupPic').src = currentGroup.groupPic || 'https://via.
 const messagesRef = collection(db, "groups", currentGroup.code, "messages");
 const renderedMessages = new Set();
 
-// ===== Render message =====
 function renderMessage(msg){
   if(!msg.id) return;
   const msgDiv = document.createElement('div');
