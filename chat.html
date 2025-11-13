@@ -57,7 +57,7 @@ button.voice span.timer {position:absolute;bottom:-20px;font-size:12px;color:#00
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -107,6 +107,7 @@ function markMessageAsRead(msgId) {
   updateDoc(msgDoc, { read: true }).catch(()=>{});
 }
 
+// ===== Render a message =====
 function renderMessage(msg){
   if(!msg.id) return;
   const msgDiv = document.createElement('div');
@@ -158,6 +159,27 @@ function renderMessage(msg){
     observer.observe(msgDiv);
   }
 }
+
+// ===== Load existing messages =====
+async function loadMessages(){
+  chatBox.innerHTML="";
+  const snapshot = await getDocs(messagesRef);
+  let msgs = [];
+  snapshot.forEach(docSnap=>{
+    const msg = docSnap.data();
+    msg.id = docSnap.id;
+    msgs.push(msg);
+  });
+  msgs.sort((a,b)=> a.timestamp?.seconds - b.timestamp?.seconds);
+  msgs.forEach(msg=>{
+    if(!renderedMessages.has(msg.id)){
+      renderedMessages.add(msg.id);
+      renderMessage(msg);
+    }
+  });
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+loadMessages();
 
 // ===== Real-time messages =====
 onSnapshot(messagesRef, snapshot=>{
